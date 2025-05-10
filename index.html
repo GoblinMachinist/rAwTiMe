@@ -13,21 +13,26 @@
       margin: 1rem;
     }
     .controls { margin-top: 2rem; }
-    .volume-slider {
-      width: 200px;
-      vertical-align: middle;
-    }
+    .volume-slider { width: 200px; vertical-align: middle; }
+    .now-playing { margin-top: 1rem; font-size: 1.1rem; }
   </style>
 </head>
 <body>
   <h1>🎧 DJ Webpage</h1>
+
   <div class="controls">
     <button onclick="startDJ()">Start DJ</button>
     <button onclick="togglePause()">Pause</button>
     <button onclick="nextSong()">Next Song</button>
+    <button onclick="toggleShuffle()">Shuffle: <span id="shuffleStatus">ON</span></button>
     <br>
     Volume:
     <input type="range" class="volume-slider" min="0" max="1" step="0.01" value="1" onchange="adjustVolume(this.value)">
+  </div>
+
+  <div class="now-playing">
+    🎶 YouTube Track: <span id="youtubeTitle">None</span><br>
+    🗣️ Voice Clip: <span id="voiceTitle">None</span>
   </div>
 
   <!-- YouTube Player -->
@@ -46,9 +51,13 @@
     let ytReady = false;
     let isPaused = false;
     let playingVoice = false;
+    let shuffleEnabled = true;
     let volume = 1;
 
     const voiceAudio = document.getElementById('voice');
+    const voiceTitle = document.getElementById('voiceTitle');
+    const youtubeTitle = document.getElementById('youtubeTitle');
+    const shuffleStatus = document.getElementById('shuffleStatus');
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
@@ -69,7 +78,7 @@
 
     function onPlayerReady() {
       ytReady = true;
-      player.setShuffle(true);
+      player.setShuffle(shuffleEnabled);
     }
 
     function onPlayerStateChange(event) {
@@ -78,13 +87,26 @@
           playRandomClip(() => {
             fadeIn('player-container');
             player.playVideo();
+            updateYouTubeTitle();
           });
         });
+      } else if (event.data === YT.PlayerState.PLAYING) {
+        updateYouTubeTitle();
+      }
+    }
+
+    function updateYouTubeTitle() {
+      try {
+        const title = player.getVideoData().title;
+        youtubeTitle.textContent = title || "Unknown";
+      } catch (e) {
+        youtubeTitle.textContent = "Unknown";
       }
     }
 
     function playRandomClip(callback = null) {
       const clip = voiceClips[Math.floor(Math.random() * voiceClips.length)];
+      voiceTitle.textContent = clip.split('/').pop();
       voiceAudio.src = clip;
       voiceAudio.volume = volume;
       voiceAudio.play();
@@ -112,20 +134,11 @@
 
     function togglePause() {
       if (!ytReady) return;
-
       if (isPaused) {
-        if (playingVoice) {
-          voiceAudio.play();
-        } else {
-          player.playVideo();
-        }
+        playingVoice ? voiceAudio.play() : player.playVideo();
         isPaused = false;
       } else {
-        if (playingVoice) {
-          voiceAudio.pause();
-        } else {
-          player.pauseVideo();
-        }
+        playingVoice ? voiceAudio.pause() : player.pauseVideo();
         isPaused = true;
       }
     }
@@ -139,6 +152,12 @@
           player.nextVideo();
         });
       });
+    }
+
+    function toggleShuffle() {
+      shuffleEnabled = !shuffleEnabled;
+      if (ytReady) player.setShuffle(shuffleEnabled);
+      shuffleStatus.textContent = shuffleEnabled ? "ON" : "OFF";
     }
 
     function fadeIn(id) {
