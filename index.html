@@ -7,12 +7,13 @@
     body { font-family: sans-serif; text-align: center; background: #111; color: #fff; }
     #player-container, #voice-container { opacity: 0; transition: opacity 2s ease; }
     audio { display: none; }
-    button { padding: 1rem; font-size: 1.2rem; margin-top: 2rem; }
+    button { padding: 1rem; font-size: 1.2rem; margin: 1rem; }
   </style>
 </head>
 <body>
   <h1>🎧 DJ Webpage</h1>
   <button onclick="startDJ()">Start DJ</button>
+  <button onclick="togglePause()">Pause</button>
 
   <!-- YouTube Player -->
   <div id="player-container">
@@ -31,7 +32,9 @@
 
     let player;
     let ytReady = false;
-    let voiceAudio = document.getElementById('voice');
+    let isPaused = false;
+    let playingVoice = false;
+    const voiceAudio = document.getElementById('voice');
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
@@ -50,7 +53,7 @@
       });
     }
 
-    function onPlayerReady(event) {
+    function onPlayerReady() {
       ytReady = true;
       player.setShuffle(true);
     }
@@ -68,15 +71,17 @@
       voiceAudio.src = clip;
       voiceAudio.volume = 0;
       voiceAudio.play();
+      playingVoice = true;
 
       fadeIn('voice-container');
-      fadeVolume(voiceAudio, 0, 1, 2000); // fade in
+      fadeVolume(voiceAudio, 0, 1, 2000);
 
       voiceAudio.onended = () => {
+        playingVoice = false;
         fadeVolume(voiceAudio, 1, 0, 2000);
         fadeOut('voice-container', () => {
           fadeIn('player-container');
-          player.nextVideo(); // play next video in the playlist
+          player.nextVideo();
         });
       };
     }
@@ -108,7 +113,27 @@
         alert("YouTube player not ready yet. Please wait a moment and try again.");
         return;
       }
-      player.playVideo(); // start the playlist
+      player.playVideo();
+    }
+
+    function togglePause() {
+      if (!ytReady) return;
+
+      if (isPaused) {
+        if (playingVoice) {
+          voiceAudio.play();
+        } else {
+          player.playVideo();
+        }
+        isPaused = false;
+      } else {
+        if (playingVoice) {
+          voiceAudio.pause();
+        } else {
+          player.pauseVideo();
+        }
+        isPaused = true;
+      }
     }
 
     // Load YouTube IFrame API
