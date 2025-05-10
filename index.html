@@ -131,6 +131,136 @@
       player.playVideo();
     }
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>rAwTiMe</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #111; color: #fff; }
+    #player-container, #voice-container { opacity: 0; transition: opacity 2s ease; }
+    audio { display: none; }
+    button, input[type="range"] {
+      padding: 1rem;
+      font-size: 1.2rem;
+      margin: 1rem;
+    }
+    .controls { margin-top: 2rem; }
+    .volume-slider { width: 200px; vertical-align: middle; }
+    .now-playing { margin-top: 1rem; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <img src="https://i.imgur.com/LrFDbjq.png">
+
+  <div class="controls">
+    <button onclick="startDJ()">Start DJ</button>
+    <button onclick="togglePause()">Pause</button>
+    <button onclick="nextSong()">Next Song</button>
+    <br>
+    Volume:
+    <input type="range" class="volume-slider" min="0" max="1" step="0.01" value="1" onchange="adjustVolume(this.value)">
+  </div>
+
+  <div class="now-playing">
+    🎶 YouTube Track: <span id="youtubeTitle">None</span>
+  </div>
+
+  <!-- YouTube Player -->
+  <div id="player-container">
+    <div id="player"></div>
+  </div>
+
+  <!-- Audio Element for Voice Clips -->
+  <div id="voice-container">
+    <audio id="voice" preload="auto"></audio>
+  </div>
+
+  <script>
+    const voiceClips = Array.from({ length: 30 }, (_, i) => `voiceclips/${i}.mp3`);
+    let player;
+    let ytReady = false;
+    let isPaused = false;
+    let playingVoice = false;
+    let volume = 1;
+
+    const voiceAudio = document.getElementById('voice');
+    const youtubeTitle = document.getElementById('youtubeTitle');
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        height: '0',
+        width: '0',
+        playerVars: {
+          listType: 'playlist',
+          list: 'PLD58ECddxRngHs9gZPQWOCAKwV1hTtYe4',
+          autoplay: 0,
+          controls: 0
+        },
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    function onPlayerReady() {
+      ytReady = true;
+      player.setShuffle(true);
+      player.playVideo(); // Start playback immediately
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED) {
+        fadeOut('player-container', () => {
+          playRandomClip(() => {
+            fadeIn('player-container');
+            player.nextVideo();
+            player.playVideo();
+            updateYouTubeTitle();
+          });
+        });
+      } else if (event.data === YT.PlayerState.PLAYING) {
+        updateYouTubeTitle();
+      }
+    }
+
+    function updateYouTubeTitle() {
+      try {
+        const title = player.getVideoData().title;
+        youtubeTitle.textContent = title || "Unknown";
+      } catch {
+        youtubeTitle.textContent = "Unknown";
+      }
+    }
+
+    function playRandomClip(callback = null) {
+      const clip = voiceClips[Math.floor(Math.random() * voiceClips.length)];
+      voiceAudio.src = clip;
+      voiceAudio.volume = volume;
+      voiceAudio.play();
+      playingVoice = true;
+
+      fadeIn('voice-container');
+      fadeVolume(voiceAudio, 0, volume, 2000);
+
+      voiceAudio.onended = () => {
+        playingVoice = false;
+        fadeVolume(voiceAudio, volume, 0, 2000);
+        fadeOut('voice-container', () => {
+          if (callback) callback();
+        });
+      };
+    }
+
+    function startDJ() {
+      if (!ytReady) {
+        alert("YouTube player not ready yet. Please wait a moment and try again.");
+        return;
+      }
+      player.playVideo();
+    }
+
     function togglePause() {
       if (!ytReady) return;
       if (isPaused) {
@@ -149,14 +279,9 @@
         playRandomClip(() => {
           fadeIn('player-container');
           player.nextVideo();
+          player.playVideo();
         });
       });
-    }
-
-    function toggleShuffle() {
-      shuffleEnabled = !shuffleEnabled;
-      if (ytReady) player.setShuffle(shuffleEnabled);
-      shuffleStatus.textContent = shuffleEnabled ? "ON" : "OFF";
     }
 
     function fadeIn(id) {
