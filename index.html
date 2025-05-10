@@ -25,30 +25,34 @@
   </div>
 
   <script>
-    const voiceClips = [
-      'https://yourserver.com/clip1.mp3',
-      'https://yourserver.com/clip2.mp3',
-      'https://yourserver.com/clip3.mp3'
-    ];
-
-    const youtubeVideos = [
-      'VIDEO_ID_1',
-      'VIDEO_ID_2',
-      'VIDEO_ID_3'
-    ];
+    const voiceClips = Array.from({ length: 30 }, (_, i) =>
+      `voiceclips/${i}.mp3`
+    );
 
     let player;
     let voiceAudio = document.getElementById('voice');
+    let ytReady = false;
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
-        height: '0', width: '0',
-        videoId: getRandomYouTubeID(),
+        height: '0',
+        width: '0',
+        playerVars: {
+          listType: 'playlist',
+          list: 'PLD58ECddxRngHs9gZPQWOCAKwV1hTtYe4',
+          autoplay: 0,
+          controls: 0
+        },
         events: {
-          'onReady': () => {}, // Not autoplaying initially
+          'onReady': onPlayerReady,
           'onStateChange': onPlayerStateChange
         }
       });
+    }
+
+    function onPlayerReady() {
+      ytReady = true;
+      player.setShuffle(true);
     }
 
     function onPlayerStateChange(event) {
@@ -59,10 +63,6 @@
       }
     }
 
-    function getRandomYouTubeID() {
-      return youtubeVideos[Math.floor(Math.random() * youtubeVideos.length)];
-    }
-
     function playRandomClip() {
       const clip = voiceClips[Math.floor(Math.random() * voiceClips.length)];
       voiceAudio.src = clip;
@@ -70,13 +70,13 @@
       voiceAudio.play();
 
       fadeIn('voice-container');
-      fadeVolume(voiceAudio, 0, 1, 2000); // fade in
+      fadeVolume(voiceAudio, 0, 1, 2000);
 
       voiceAudio.onended = () => {
         fadeOut('voice-container', () => {
           fadeVolume(voiceAudio, 1, 0, 2000);
-          player.loadVideoById(getRandomYouTubeID());
           fadeIn('player-container');
+          player.playVideo();
         });
       };
     }
@@ -89,7 +89,7 @@
     function fadeOut(id, callback) {
       const el = document.getElementById(id);
       el.style.opacity = 0;
-      setTimeout(callback, 2000); // match CSS transition duration
+      setTimeout(callback, 2000);
     }
 
     function fadeVolume(audio, from, to, duration) {
@@ -104,7 +104,11 @@
     }
 
     function startDJ() {
-      playRandomClip(); // Start with a voice clip
+      if (!ytReady) {
+        alert("YouTube player not ready yet. Please wait a moment and try again.");
+        return;
+      }
+      playRandomClip();
     }
 
     // Load YouTube IFrame API
