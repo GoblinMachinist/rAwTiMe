@@ -7,13 +7,28 @@
     body { font-family: sans-serif; text-align: center; background: #111; color: #fff; }
     #player-container, #voice-container { opacity: 0; transition: opacity 2s ease; }
     audio { display: none; }
-    button { padding: 1rem; font-size: 1.2rem; margin: 1rem; }
+    button, input[type="range"] {
+      padding: 1rem;
+      font-size: 1.2rem;
+      margin: 1rem;
+    }
+    .controls { margin-top: 2rem; }
+    .volume-slider {
+      width: 200px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
   <h1>🎧 DJ Webpage</h1>
-  <button onclick="startDJ()">Start DJ</button>
-  <button onclick="togglePause()">Pause</button>
+  <div class="controls">
+    <button onclick="startDJ()">Start DJ</button>
+    <button onclick="togglePause()">Pause</button>
+    <button onclick="nextSong()">Next Song</button>
+    <br>
+    Volume:
+    <input type="range" class="volume-slider" min="0" max="1" step="0.01" value="1" onchange="adjustVolume(this.value)">
+  </div>
 
   <!-- YouTube Player -->
   <div id="player-container">
@@ -26,14 +41,13 @@
   </div>
 
   <script>
-    const voiceClips = Array.from({ length: 30 }, (_, i) =>
-      `voiceclips/${i}.mp3`
-    );
-
+    const voiceClips = Array.from({ length: 30 }, (_, i) => `voiceclips/${i}.mp3`);
     let player;
     let ytReady = false;
     let isPaused = false;
     let playingVoice = false;
+    let volume = 1;
+
     const voiceAudio = document.getElementById('voice');
 
     function onYouTubeIframeAPIReady() {
@@ -61,51 +75,31 @@
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.ENDED) {
         fadeOut('player-container', () => {
-          playRandomClip();
+          playRandomClip(() => {
+            fadeIn('player-container');
+            player.playVideo();
+          });
         });
       }
     }
 
-    function playRandomClip() {
+    function playRandomClip(callback = null) {
       const clip = voiceClips[Math.floor(Math.random() * voiceClips.length)];
       voiceAudio.src = clip;
-      voiceAudio.volume = 0;
+      voiceAudio.volume = volume;
       voiceAudio.play();
       playingVoice = true;
 
       fadeIn('voice-container');
-      fadeVolume(voiceAudio, 0, 1, 2000);
+      fadeVolume(voiceAudio, 0, volume, 2000);
 
       voiceAudio.onended = () => {
         playingVoice = false;
-        fadeVolume(voiceAudio, 1, 0, 2000);
+        fadeVolume(voiceAudio, volume, 0, 2000);
         fadeOut('voice-container', () => {
-          fadeIn('player-container');
-          player.nextVideo();
+          if (callback) callback();
         });
       };
-    }
-
-    function fadeIn(id) {
-      const el = document.getElementById(id);
-      el.style.opacity = 1;
-    }
-
-    function fadeOut(id, callback) {
-      const el = document.getElementById(id);
-      el.style.opacity = 0;
-      setTimeout(callback, 2000);
-    }
-
-    function fadeVolume(audio, from, to, duration) {
-      const steps = 20;
-      const stepTime = duration / steps;
-      let currentStep = 0;
-      const interval = setInterval(() => {
-        currentStep++;
-        audio.volume = from + (to - from) * (currentStep / steps);
-        if (currentStep >= steps) clearInterval(interval);
-      }, stepTime);
     }
 
     function startDJ() {
@@ -134,6 +128,43 @@
         }
         isPaused = true;
       }
+    }
+
+    function nextSong() {
+      if (!ytReady) return;
+      fadeOut('player-container', () => {
+        player.pauseVideo();
+        playRandomClip(() => {
+          fadeIn('player-container');
+          player.nextVideo();
+        });
+      });
+    }
+
+    function fadeIn(id) {
+      document.getElementById(id).style.opacity = 1;
+    }
+
+    function fadeOut(id, callback) {
+      document.getElementById(id).style.opacity = 0;
+      setTimeout(callback, 2000);
+    }
+
+    function fadeVolume(audio, from, to, duration) {
+      const steps = 20;
+      const stepTime = duration / steps;
+      let currentStep = 0;
+      const interval = setInterval(() => {
+        currentStep++;
+        audio.volume = from + (to - from) * (currentStep / steps);
+        if (currentStep >= steps) clearInterval(interval);
+      }, stepTime);
+    }
+
+    function adjustVolume(val) {
+      volume = parseFloat(val);
+      voiceAudio.volume = volume;
+      if (ytReady) player.setVolume(volume * 100);
     }
 
     // Load YouTube IFrame API
