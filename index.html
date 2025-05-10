@@ -30,8 +30,8 @@
     );
 
     let player;
-    let voiceAudio = document.getElementById('voice');
     let ytReady = false;
+    let voiceAudio = document.getElementById('voice');
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
@@ -50,7 +50,7 @@
       });
     }
 
-    function onPlayerReady() {
+    function onPlayerReady(event) {
       ytReady = true;
       player.setShuffle(true);
     }
@@ -70,13 +70,13 @@
       voiceAudio.play();
 
       fadeIn('voice-container');
-      fadeVolume(voiceAudio, 0, 1, 2000);
+      fadeVolume(voiceAudio, 0, 1, 2000); // fade in
 
       voiceAudio.onended = () => {
+        fadeVolume(voiceAudio, 1, 0, 2000);
         fadeOut('voice-container', () => {
-          fadeVolume(voiceAudio, 1, 0, 2000);
           fadeIn('player-container');
-          player.playVideo();
+          player.nextVideo(); // play next video in the playlist
         });
       };
     }
@@ -108,7 +108,7 @@
         alert("YouTube player not ready yet. Please wait a moment and try again.");
         return;
       }
-      playRandomClip();
+      player.playVideo(); // start the playlist
     }
 
     // Load YouTube IFrame API
